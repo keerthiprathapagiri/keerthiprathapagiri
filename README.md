@@ -1,16 +1,49 @@
-## Hi there 👋
+# Hi, I'm Keerthi 👋
 
-<!--
-**keerthiprathapagiri/keerthiprathapagiri** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+### 🚀 About Me
 
-Here are some ideas to get you started:
+* 🎓 B.Tech CSE (Data Science) Student
+* 💻 Passionate about Python, Web Development & Problem Solving
+* 🌱 Currently learning AI, Data Science and Full-Stack Development
+* 🎯 Building projects that solve real-world problems
+* ⚡ Fast learner, public speaker, painter and aspiring leader
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+---
+
+### 🛠️ Tech Stack
+
+* Python
+* C
+* HTML, CSS, JavaScript
+* Flask
+* MySQL
+* Git & GitHub
+
+---
+
+### 🚧 Projects
+
+* 💊 Smart Medicine Expiry & Stock Tracker
+* 🤝 Skill Barter System
+* 📰 Fake News Detection Engine
+* 🌊 Flood Prediction & Alert System
+
+---
+
+### 📈 GitHub Stats
+
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=keerthiprathapagiri\&show_icons=true)
+
+---
+
+### 🐍 Contribution Snake
+
+![Snake animation](https://github.com/keerthiprathapagiri/keerthiprathapagiri/blob/output/github-contribution-grid-snake-dark.svg)
+
+---
+
+### 🌐 Connect With Me
+
+[LinkedIn](https://www.linkedin.com/) • [GitHub](https://github.com/keerthiprathapagiri)
+
+> "Building, learning, and improving one project at a time."
