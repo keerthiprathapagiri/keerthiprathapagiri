@@ -32,13 +32,13 @@
 
 ### 📈 GitHub Stats
 
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=keerthiprathapagiri\&show_icons=true)
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=keerthiprathapagiri&show_icons=true)
 
 ---
 
 ### 🐍 Contribution Snake
 
-![Snake animation](https://github.com/keerthiprathapagiri/keerthiprathapagiri/blob/output/github-contribution-grid-snake-dark.svg)
+![Snake animation](https://raw.githubusercontent.com/keerthiprathapagiri/keerthiprathapagiri/output/github-snake-dark.svg)
 
 ---
 
