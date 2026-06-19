@@ -20,8 +20,9 @@ jobs:
           outputs: dist/github-contribution-grid-snake-dark.svg
           snake_color: pink
           snake_color_static: FFB6D9
+          background_color: "000000"
           eat_self: false
-          direction: right
+          show_contribution: true
 
       - uses: peaceiris/actions-gh-pages@v3
         with:
