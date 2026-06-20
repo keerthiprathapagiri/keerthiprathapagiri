@@ -1,0 +1,417 @@
+name: Sakura Snake Garden
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/sakura-snake.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ── Step 1: Checkout ──────────────────────────────────────────────────
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── Step 2: Set up Node.js ────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── Step 3: Fetch contribution data & build the custom SVG ────────────
+      - name: Generate Sakura Snake SVG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_USERNAME: ${{ github.repository_owner }}
+        run: |
+          npm install @octokit/rest
+
+          node << 'EOF'
+          const { Octokit } = require("@octokit/rest");
+          const fs = require("fs");
+
+          const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+          const username = process.env.GH_USERNAME;
+
+          // ── GraphQL: fetch 53 weeks of contribution data ─────────────────
+          async function getContributions() {
+            const query = `
+              query($login: String!) {
+                user(login: $login) {
+                  contributionsCollection {
+                    contributionCalendar {
+                      totalContributions
+                      weeks {
+                        contributionDays {
+                          contributionCount
+                          date
+                          color
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            const res = await octokit.graphql(query, { login: username });
+            return res.user.contributionsCollection.contributionCalendar;
+          }
+
+          // ── Snake path generator (BFS Hamiltonian-ish walk) ──────────────
+          function buildSnakePath(grid) {
+            // grid[col][row] = { count, color }
+            // Simple: walk column-by-column, alternating direction (boustrophedon)
+            const path = [];
+            const cols = grid.length;
+            const rows = grid[0].length;
+            for (let c = 0; c < cols; c++) {
+              const colCells = [];
+              for (let r = 0; r < rows; r++) {
+                colCells.push({ col: c, row: r });
+              }
+              if (c % 2 === 1) colCells.reverse(); // snake pattern
+              path.push(...colCells);
+            }
+            return path;
+          }
+
+          // ── SVG builder ───────────────────────────────────────────────────
+          async function buildSVG() {
+            const calendar = await getContributions();
+            const weeks = calendar.weeks;
+            const totalContributions = calendar.totalContributions;
+
+            const CELL = 12;       // cell size
+            const GAP  = 3;        // gap between cells
+            const STEP = CELL + GAP;
+            const COLS = weeks.length;          // up to 53
+            const ROWS = 7;                     // Mon–Sun
+            const HEADER = 54;                  // space for total count text
+            const LABEL_W = 30;                 // left label space (day names)
+            const W = LABEL_W + COLS * STEP + 20;
+            const H = HEADER + ROWS * STEP + 20;
+
+            // Build grid data
+            const grid = weeks.map(week =>
+              Array.from({ length: 7 }, (_, i) => {
+                const day = week.contributionDays[i];
+                return day ? { count: day.contributionCount, color: day.color, date: day.date } : { count: 0, color: "#ebedf0", date: "" };
+              })
+            );
+
+            // ── Sakura colour mapping (overrides GitHub green) ───────────
+            function sakuraColor(count) {
+              if (count === 0) return "#fdf6f9";       // empty – near-white blush
+              if (count <= 2)  return "#f9d0e0";       // petal light pink
+              if (count <= 5)  return "#f4a0be";       // blossom pink
+              if (count <= 9)  return "#e8709e";       // deep petal
+              return               "#c0416e";           // dark sakura core
+            }
+
+            // Build snake path
+            const path = buildSnakePath(grid);
+
+            // Snake animation keyframes (move head along path)
+            // We'll represent the snake as a moving polyline by animating
+            // a clip-path reveal along the boustrophedon path.
+            // Each step ~0.18 s → total ≈ path.length * 0.18 s, capped at 30 s
+            const SNAKE_LEN = 5;        // visible tail cells
+            const STEP_DUR  = 0.22;     // seconds per cell
+            const TOTAL_DUR = (path.length * STEP_DUR).toFixed(1);
+
+            // Build <animateMotion> path string through cell centres
+            function cellCX(col) { return LABEL_W + col * STEP + CELL / 2; }
+            function cellCY(row) { return HEADER  + row * STEP + CELL / 2; }
+
+            const motionD = path.map(({ col, row }, i) =>
+              `${i === 0 ? "M" : "L"} ${cellCX(col)} ${cellCY(row)}`
+            ).join(" ");
+
+            // ── Petal / flower defs ───────────────────────────────────────
+            // A simple 5-petal sakura flower symbol
+            const flowerDef = `
+              <symbol id="flower" viewBox="-6 -6 12 12">
+                <ellipse cx="0" cy="-3.5" rx="2.2" ry="3.5" fill="currentColor" opacity="0.85" transform="rotate(0)"/>
+                <ellipse cx="0" cy="-3.5" rx="2.2" ry="3.5" fill="currentColor" opacity="0.85" transform="rotate(72)"/>
+                <ellipse cx="0" cy="-3.5" rx="2.2" ry="3.5" fill="currentColor" opacity="0.85" transform="rotate(144)"/>
+                <ellipse cx="0" cy="-3.5" rx="2.2" ry="3.5" fill="currentColor" opacity="0.85" transform="rotate(216)"/>
+                <ellipse cx="0" cy="-3.5" rx="2.2" ry="3.5" fill="currentColor" opacity="0.85" transform="rotate(288)"/>
+                <circle r="1.8" fill="#ffe0ee"/>
+              </symbol>`;
+
+            // ── Falling petals (ambient) ──────────────────────────────────
+            function fallingPetal(id, x, delay, dur) {
+              return `
+                <use href="#flower" x="${x}" y="-12" width="10" height="10"
+                  style="color:#f9c6d8; opacity:0.55;"
+                  transform="translate(${x}, -12)">
+                  <animateTransform attributeName="transform" type="translate"
+                    values="${x},-12; ${x + 18},${H + 10}"
+                    dur="${dur}s" begin="${delay}s" repeatCount="indefinite"
+                    additive="replace"/>
+                  <animate attributeName="opacity" values="0;0.55;0.55;0" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+                </use>`;
+            }
+
+            // Scatter petals across the width
+            const petalSeeds = [
+              [30, 0, 7], [90, 2.1, 9], [150, 0.5, 8], [220, 3.2, 7.5],
+              [290, 1.0, 10], [360, 4.0, 6.5], [430, 0.8, 9], [500, 2.5, 7],
+              [570, 1.5, 8.5], [640, 3.8, 6], [700, 0.3, 9.5]
+            ];
+            const petalsHTML = petalSeeds.filter(([x]) => x < W).map(([x, d, dur], i) =>
+              fallingPetal(i, x, d, dur)
+            ).join("\n");
+
+            // ── Grid cells ────────────────────────────────────────────────
+            let cellsHTML = "";
+            for (let c = 0; c < COLS; c++) {
+              for (let r = 0; r < ROWS; r++) {
+                const { count, date } = grid[c][r];
+                const x = LABEL_W + c * STEP;
+                const y = HEADER  + r * STEP;
+                const fill = sakuraColor(count);
+                const isActive = count > 0;
+
+                if (isActive) {
+                  // Flower cell: coloured rounded square + tiny flower icon
+                  cellsHTML += `
+                    <g class="cell" data-count="${count}" data-date="${date}">
+                      <rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" ry="3" fill="${fill}" stroke="#e8a0bc" stroke-width="0.4"/>
+                      <use href="#flower" x="${x + 1}" y="${y + 1}" width="${CELL - 2}" height="${CELL - 2}" style="color:${fill}; filter:brightness(0.75);"/>
+                    </g>`;
+                } else {
+                  // Empty: soft blush square
+                  cellsHTML += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" ry="3" fill="${fill}" stroke="#f0dde6" stroke-width="0.4"/>`;
+                }
+              }
+            }
+
+            // ── Day labels ────────────────────────────────────────────────
+            const days = ["", "Mon", "", "Wed", "", "Fri", ""];
+            const dayLabels = days.map((d, i) =>
+              d ? `<text x="${LABEL_W - 4}" y="${HEADER + i * STEP + CELL - 2}" text-anchor="end" font-size="8" fill="#b07090" font-family="'Segoe UI',sans-serif">${d}</text>` : ""
+            ).join("");
+
+            // ── Month labels ──────────────────────────────────────────────
+            let monthLabels = "";
+            let lastMonth = "";
+            weeks.forEach((week, c) => {
+              const firstDay = week.contributionDays.find(d => d && d.date);
+              if (!firstDay) return;
+              const month = new Date(firstDay.date).toLocaleString("en", { month: "short" });
+              if (month !== lastMonth) {
+                const x = LABEL_W + c * STEP;
+                monthLabels += `<text x="${x}" y="${HEADER - 6}" font-size="9" fill="#b07090" font-family="'Segoe UI',sans-serif">${month}</text>`;
+                lastMonth = month;
+              }
+            });
+
+            // ── Snake ─────────────────────────────────────────────────────
+            // Snake head (circle) that travels the motionD path
+            const snakeHead = `
+              <g id="snake-head">
+                <circle r="${CELL / 2 - 0.5}" fill="#7d3c6b" stroke="#4a1942" stroke-width="1.2"/>
+                <!-- eyes -->
+                <circle cx="2.5" cy="-2" r="1.2" fill="white"/>
+                <circle cx="2.5" cy="-2" r="0.6" fill="#1a0015"/>
+                <circle cx="-2.5" cy="-2" r="1.2" fill="white"/>
+                <circle cx="-2.5" cy="-2" r="0.6" fill="#1a0015"/>
+                <!-- tongue -->
+                <line x1="0" y1="5" x2="-2" y2="8" stroke="#c0196e" stroke-width="0.8" stroke-linecap="round"/>
+                <line x1="0" y1="5" x2="2"  y2="8" stroke="#c0196e" stroke-width="0.8" stroke-linecap="round"/>
+                <animateMotion dur="${TOTAL_DUR}s" repeatCount="indefinite" rotate="auto" calcMode="linear">
+                  <mpath href="#snake-path"/>
+                </animateMotion>
+              </g>`;
+
+            // Snake body: 4 trailing circles that lag behind
+            const bodySegments = Array.from({ length: SNAKE_LEN }, (_, i) => {
+              const lag = (i + 1) * STEP_DUR; // seconds behind head
+              const bodyColor = i === 0 ? "#a0507a" : i < 3 ? "#c07898" : "#d8a0b8";
+              const r = Math.max(3, CELL / 2 - 0.5 - i * 0.5);
+              return `
+                <circle r="${r}" fill="${bodyColor}" opacity="${1 - i * 0.15}">
+                  <animateMotion dur="${TOTAL_DUR}s" begin="${lag}s" repeatCount="indefinite" rotate="auto" calcMode="linear">
+                    <mpath href="#snake-path"/>
+                  </animateMotion>
+                </circle>`;
+            }).join("\n");
+
+            // ── "Eaten" cell erase animation ──────────────────────────────
+            // For each active cell the snake passes, flash it (eaten effect)
+            let eatAnims = "";
+            path.forEach(({ col, row }, i) => {
+              const { count } = grid[col][row];
+              if (count === 0) return;
+              const x = LABEL_W + col * STEP;
+              const y = HEADER  + row * STEP;
+              const t = (i * STEP_DUR);
+              const begin = `${t.toFixed(2)}s`;
+              // Flash the cell bright then fade to eaten (grey)
+              eatAnims += `
+                <rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="#ffd6eb" opacity="0">
+                  <animate attributeName="opacity" values="0;1;0" dur="0.35s" begin="${begin};${begin}+${TOTAL_DUR}s" repeatCount="indefinite"/>
+                </rect>`;
+            });
+
+            // ── Total contributions badge ─────────────────────────────────
+            const badgeY = 28;
+            const badge = `
+              <!-- cherry blossom branch decorative line -->
+              <line x1="${LABEL_W}" y1="36" x2="${W - 10}" y2="36" stroke="#f0c8d8" stroke-width="1" stroke-dasharray="3,4"/>
+
+              <!-- total contributions text -->
+              <text x="${W / 2}" y="${badgeY}" text-anchor="middle"
+                font-family="'Segoe UI', 'Helvetica Neue', sans-serif"
+                font-size="15" font-weight="700" fill="#7d2d5a" letter-spacing="0.5">
+                🌸 ${totalContributions.toLocaleString()} Contributions in the Last Year
+              </text>`;
+
+            // ── Assemble full SVG (light) ─────────────────────────────────
+            const svgLight = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+              width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+              <defs>
+                ${flowerDef}
+                <!-- Hidden motion path for snake -->
+                <path id="snake-path" d="${motionD}" fill="none"/>
+
+                <!-- Soft sakura gradient background -->
+                <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%"   stop-color="#fff5f8"/>
+                  <stop offset="100%" stop-color="#fde8f2"/>
+                </linearGradient>
+
+                <!-- Glow filter for snake head -->
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
+              <!-- Background -->
+              <rect width="${W}" height="${H}" fill="url(#bgGrad)" rx="12"/>
+
+              <!-- Falling petals (ambient) -->
+              ${petalsHTML}
+
+              <!-- Contribution count badge -->
+              ${badge}
+
+              <!-- Month labels -->
+              ${monthLabels}
+
+              <!-- Day labels -->
+              ${dayLabels}
+
+              <!-- Contribution cells -->
+              ${cellsHTML}
+
+              <!-- Eat flash animations -->
+              ${eatAnims}
+
+              <!-- Snake body segments (rendered below head) -->
+              ${bodySegments}
+
+              <!-- Snake head (on top) -->
+              <g filter="url(#glow)">
+                ${snakeHead}
+              </g>
+            </svg>`;
+
+            // ── Dark variant ──────────────────────────────────────────────
+            function sakuraColorDark(count) {
+              if (count === 0) return "#1a0d14";
+              if (count <= 2)  return "#5c1e3a";
+              if (count <= 5)  return "#8c3060";
+              if (count <= 9)  return "#bf4a88";
+              return               "#e870b0";
+            }
+
+            let cellsDark = "";
+            for (let c = 0; c < COLS; c++) {
+              for (let r = 0; r < ROWS; r++) {
+                const { count, date } = grid[c][r];
+                const x = LABEL_W + c * STEP;
+                const y = HEADER  + r * STEP;
+                const fill = sakuraColorDark(count);
+                const isActive = count > 0;
+                if (isActive) {
+                  cellsDark += `
+                    <g class="cell">
+                      <rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="${fill}" stroke="#6a2050" stroke-width="0.4"/>
+                      <use href="#flower" x="${x+1}" y="${y+1}" width="${CELL-2}" height="${CELL-2}" style="color:${fill}; filter:brightness(1.4);"/>
+                    </g>`;
+                } else {
+                  cellsDark += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="${fill}" stroke="#2d1220" stroke-width="0.4"/>`;
+                }
+              }
+            }
+
+            const svgDark = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+              width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+              <defs>
+                ${flowerDef}
+                <path id="snake-path" d="${motionD}" fill="none"/>
+                <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%"   stop-color="#120810"/>
+                  <stop offset="100%" stop-color="#1e0d18"/>
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <rect width="${W}" height="${H}" fill="url(#bgGrad)" rx="12"/>
+
+              ${petalsHTML}
+
+              <!-- Total contributions (dark) -->
+              <line x1="${LABEL_W}" y1="36" x2="${W - 10}" y2="36" stroke="#5a2040" stroke-width="1" stroke-dasharray="3,4"/>
+              <text x="${W / 2}" y="${badgeY}" text-anchor="middle"
+                font-family="'Segoe UI', 'Helvetica Neue', sans-serif"
+                font-size="15" font-weight="700" fill="#f090c0" letter-spacing="0.5">
+                🌸 ${totalContributions.toLocaleString()} Contributions in the Last Year
+              </text>
+
+              ${monthLabels.replace(/fill="#b07090"/g, 'fill="#c090a8"')}
+              ${dayLabels.replace(/fill="#b07090"/g, 'fill="#c090a8"')}
+
+              ${cellsDark}
+              ${eatAnims}
+              ${bodySegments.replace(/#a0507a/g, "#c060a0").replace(/#c07898/g, "#d080b0").replace(/#d8a0b8/g, "#e0a0c8")}
+              <g filter="url(#glow)">
+                ${snakeHead.replace(/#7d3c6b/g, "#e060b0").replace(/#4a1942/g, "#9a2060")}
+              </g>
+            </svg>`;
+
+            fs.mkdirSync("dist", { recursive: true });
+            fs.writeFileSync("dist/sakura-snake.svg", svgLight);
+            fs.writeFileSync("dist/sakura-snake-dark.svg", svgDark);
+            console.log(`✅ Generated SVGs — ${totalContributions} total contributions, ${path.length} snake steps, animation: ${TOTAL_DUR}s`);
+          }
+
+          buildSVG().catch(err => { console.error(err); process.exit(1); });
+          EOF
+
+      # ── Step 4: Deploy to output branch ──────────────────────────────────
+      - name: Deploy to Output Branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: output
+          commit_message: "🌸 Update Sakura Snake [skip ci]"
