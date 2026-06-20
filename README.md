@@ -54,16 +54,8 @@
 
 ---
 
-### 🌸 Sakura Contribution Garden
-
-### 🌸 Sakura Contribution Garden
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/keerthiprathapagiri/keerthiprathapagiri/output/sakura-snake-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/keerthiprathapagiri/keerthiprathapagiri/output/sakura-snake.svg">
-  <img alt="Sakura Snake Contribution Garden" src="https://raw.githubusercontent.com/keerthiprathapagiri/keerthiprathapagiri/output/sakura-snake.svg">
-</picture>
-
+### 🐍 Contribution Snake
+![Snake animation](https://raw.githubusercontent.com/keerthiprathapagiri/keerthiprathapagiri/output/github-snake-dark.svg)
 ---
 
 ### 🌐 Connect With Me
