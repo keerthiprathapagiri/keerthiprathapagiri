@@ -57,7 +57,7 @@
 | 💊 Smart Medicine Expiry & Stock Tracker | Tracks medicine inventory and alerts before expiry |
 | 🤝 Skill Barter System | Platform to exchange skills between users |
 | 📰 Fake News Detection Engine | ML-powered tool to identify misinformation |
-| AI - Travell planner  | AI based travell planner  |
+| ✈️ AI - Travell planner  | AI based travell planner  |
 
 ---
 
