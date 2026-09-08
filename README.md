@@ -47,18 +47,6 @@
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=plotly&logoColor=white)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-
----
-
-### 🚧 Projects
-
-| Project | Description |
-|---|---|
-| 💊 Smart Medicine Expiry & Stock Tracker | Tracks medicine inventory and alerts before expiry |
-| 🤝 Skill Barter System | Platform to exchange skills between users |
-| 📰 Fake News Detection Engine | ML-powered tool to identify misinformation |
-| ✈️ AI - Travell planner  | AI based travell planner  |
-
 ---
 
 ### 📈 GitHub Stats
