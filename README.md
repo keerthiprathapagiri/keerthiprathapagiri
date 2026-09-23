@@ -1,7 +1,7 @@
 <div align="center">
 
-# Hi, I'm Keerthi 👋
-### B.Tech CSE (Data Science) • Web Dev • AI and ML Enthusiast
+# Hi, I'm Keerthi Prathapagiri
+### B.Tech CSE (CSE) | B.S (Data Science) | Web Dev | AI and ML Enthusiast
 
 </div>
 
@@ -11,9 +11,8 @@
 
 -  B.Tech CSE,Data Science Student(BITS wgl) & BS Degree Data Science Student(IIT Madras)
 -  Passionate about AI , ML , Full-Stack, Web Development & Problem Solving
--  Currently learning AI, Data Science and Full-Stack Development
 -  Building projects that solve real-world problems
--  Fast learner, public speaker, painter and aspiring leader
+-  Fast learner, public speaker, painter
 
 ---
 
