@@ -51,19 +51,12 @@
 ![Tableau](https://img.shields.io/badge/Tableau-E97627?style=for-the-badge&logo=tableau&logoColor=white)
 ### 📈 GitHub Stats
 
-<div align="center">
-
-![GitHub Stats](https://github-readme-stats.v### 📈 GitHub Stats
 
 <div align="center">
 
 <img src="https://github-readme-stats-fast.vercel.app/api?username=keerthiprathapagiri&show_icons=true&theme=radical&hide_border=true" />
 
 <img src="https://github-readme-stats-fast.vercel.app/api/top-langs/?username=keerthiprathapagiri&layout=compact&theme=radical&hide_border=true" />
-
-</div>
-
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=keerthiprathapagiri&layout=compact&theme=radical&hide_border=true)
 
 </div>
 
