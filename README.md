@@ -1,6 +1,6 @@
 <div align="center">
 
-# Hi, I'm Keerthi Prathapagiri 👋
+# Hi, I'm Keerthi Prathapagiri 
 
 ### B.Tech CSE (Data Science) | BS in Data Science | Web Developer | AI & ML Enthusiast
 
